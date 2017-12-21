@@ -1,45 +1,65 @@
-from os import getcwd, scandir, rmdir, rename
+from os import getcwd, scandir, rmdir
 from shutil import move
+# Used for a visual aide
+# from pprint import pprint
 
-# Dictionary where keys = subdirs in root, value = subdirs in keys
+root = getcwd()
 
-def get_tree(path):
-    tree = {}
-    with scandir(path) as parents:
-        for parent in parents:
-            with scandir(parent) as children:
-                tree[parent] = children
+def get_folders(path):
+    folders = []
+    if type(path) is str:
+        with scandir(path) as contents:
+            for child in contents:
+                if not child.name.startswith('.') and child.is_dir():
+                    folders.append(child.path)
+        return folders
+    if type(path) is list:
+        for item in path:
+            with scandir(item) as contents:
+                for child in contents:
+                    if not child.name.startswith('.') and child.is_dir():
+                        folders.append(child.path)
+        return folders
+    return False
 
-# def get_tree(path):
-#     tree = []
-#     with scandir(path) as contents:
-#         for content in contents:
-#             if not content.name.startswith('.') and content.is_dir():
-#                 tree.append(content.path)
-#     return tree
+def get_files(path):
+    files = []
+    if type(path) is str:
+        with scandir(path) as contents:
+            for child in contents:
+                if child.is_file():
+                    files.append(child.path)
+        return files
+    if type(path) is list:
+        for item in path:
+            with scandir(item) as contents:
+                for child in contents:
+                    if child.is_file():
+                        files.append(child.path)
+        return files
+    return False
 
-def get_leaf(path):
-    leaf = []
-    with scandir(path) as contents:
-        for entry in contents:
-            if not entry.name.startswith('.') and entry.is_file():
-                leaf.append(entry.name)
-    return leaf
+def new_path(curpath):
+    new = curpath.split('/')
+    del new[-2]
+    new = '/'.join(new)
+    return new
 
-ROOT_TREE = get_struct(getcwd())
-CHILD_TREE = []
+def perform_cleanup(children, grandchildren, orphans):
+    if not orphans['folders'] or not orphans['files']:
+        for file in grandchildren['files']:
+            move(file, new_path(file))
 
-for entry in ROOT_TREE:
-    CHILD_TREE.extend(get_struct(entry))
+parents = {'folders': get_folders(root), 'files': get_files(root)}
+children = {'folders': get_folders(parents['folders']), 'files': get_files(parents['folders'])}
+grandchildren = {'folders': get_folders(children['folders']), 'files': get_files(children['folders'])}
+orphans = {'folders': get_folders(grandchildren['folders']), 'files': get_files(grandchildren['folders'])}
 
-for subfolder in CHILD_TREE:
-    files = get_struct(subfolder, kind='file')
-    parent = subfolder.split('/')
-    del parent[-1]
-    parent = '/'.join(parent)
-    for file in files:
-        curLoc = subfolder + '/' + file
-        newLoc = parent + '/' + file
-        move(curLoc, newLoc)
-    rmdir(subfolder)
+# for file in grandchildren['files']:
+#     new = file.split('/')
+#     del new[-2]
+#     new = '/'.join(new)
+#     move(file, new)
 
+# for folder in children['folders']:
+#     rmdir(folder)
